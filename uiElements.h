@@ -27,4 +27,4 @@ const static uint8_t icons[][7] PROGMEM = {
     {0x02, 0x05, 0x02, 0x38, 0x44, 0x44, 0x28}
 };
 
-const uint8_t *icon_table[4] = {sunrise_32x32, daylight_32x32, sunset_32x32, monlight_32x32};
+const uint8_t *icon_table[(MAX_MODE+1)] = {sunrise_32x32, daylight_32x32, sunset_32x32, monlight_32x32};
