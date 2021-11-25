@@ -30,7 +30,6 @@ microLED<0, 8, MLED_NO_CLOCK, LED_WS2812, ORDER_GRB, CLI_AVER> strip;
 
 void setup()
 {
-  initSkies();
 //  strip.setBrightness(200);
   strip.clear();
   oled.init();
@@ -47,6 +46,9 @@ void setup()
   delay(2);
   writeTemp();
   sleepTimer.start();
+
+  pinMode(WHITE_LIGHT_PIN, OUTPUT);
+  
 #ifdef DEBUG_OUTPUT
   Serial.begin(9600);
 #endif
@@ -223,13 +225,15 @@ void fastCycleTask()
 
 void lightRendering()
 {
-  mData color = getColor(currentCycle);
+  sData color = getColor(currentCycle);
+  mData outColor = { color.r, color.g, color.b };
+  analogWrite(WHITE_LIGHT_PIN, color.a);
   strip.begin();
-  strip.send(color);
+  strip.send(outColor);
   strip.end();
 }
 
-mData getColor(int _step)
+sData getColor(int _step)
 {
   int cyclesPerMode;
   int cMode = getModeByCycle(_step);
@@ -261,35 +265,4 @@ int getModeByCycle(int cycle)
     if (cycle>modeCycles[i]) 
       return i;
   }
-}
-
-void initSkies()
-{
-  skyCycle[0].colors[0] = mRGB(110, 113, 216);
-  skyCycle[0].colors[1] = mRGB(170, 104, 173);
-  skyCycle[0].colors[2] = mRGB(255, 180, 58);
-  skyCycle[0].colors[3] = mRGB(255, 218, 95);
-  skyCycle[0].colors[4] = mRGB(255, 255, 130);
-  skyCycle[0].colors[5] = mRGB(240, 255, 255);
-
-  skyCycle[1].colors[0] = mRGB(240, 255, 255);
-  skyCycle[1].colors[1] = mRGB(255, 255, 255);
-  skyCycle[1].colors[2] = mRGB(255, 255, 255);
-  skyCycle[1].colors[3] = mRGB(255, 255, 255);
-  skyCycle[1].colors[4] = mRGB(255, 255, 255);
-  skyCycle[1].colors[5] = mRGB(240, 255, 255);
-
-  skyCycle[2].colors[0] = mRGB(240, 255, 255);
-  skyCycle[2].colors[1] = mRGB(254, 242, 13);
-  skyCycle[2].colors[2] = mRGB(251, 163, 48);
-  skyCycle[2].colors[3] = mRGB(235, 80, 38);
-  skyCycle[2].colors[4] = mRGB(70, 120, 156);
-  skyCycle[2].colors[5] = mRGB(48, 76, 117);
-
-  skyCycle[3].colors[0] = mRGB(48, 76, 117);
-  skyCycle[3].colors[1] = mRGB(0, 32, 127);
-  skyCycle[3].colors[2] = mRGB(0, 0, 64);
-  skyCycle[3].colors[3] = mRGB(0, 0, 64);
-  skyCycle[3].colors[4] = mRGB(0, 0, 127);
-  skyCycle[3].colors[5] = mRGB(110, 113, 216);
 }

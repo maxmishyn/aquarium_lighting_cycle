@@ -1,9 +1,9 @@
 #ifndef __have__colorCorrection_h__
 #define __have__colorCorrection_h__
 
-static mData adjustColor(mData input, const CRGB & colorCorrection, const CRGB & colorTemperature) 
+static sData adjustColor(sData input, const CRGB & colorCorrection, const CRGB & colorTemperature) 
 {
-    uint32_t adjustment[3] = {255,255,255};
+    uint8_t adjustment[3] = {255, 255, 255};
 
     for(int i=0;i<=3;i++)
     {
@@ -37,9 +37,11 @@ static mData adjustColor(mData input, const CRGB & colorCorrection, const CRGB &
   
 #endif
 
-    return mRGB(
-        scale8(input.r, adjustment[0]),
-        scale8(input.g, adjustment[1]),
-        scale8(input.b, adjustment[2]));
+  return {
+      scale8_video(input.r, adjustment[0]),
+      scale8_video(input.g, adjustment[1]),
+      scale8_video(input.b, adjustment[2]),
+      input.a
+  };
 } 
 #endif

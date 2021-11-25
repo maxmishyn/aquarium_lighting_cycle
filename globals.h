@@ -9,6 +9,9 @@
 
 #define MANUAL_TRANSITION_TIME 5000
 #define MANUAL_TRANSITION_STEPS_PER_SECOND 100
+
+#define WHITE_LIGHT_PIN 9
+
 #include "skyWorks.h"
 
 int mode = 0;
@@ -26,7 +29,5 @@ const int modeCycles[4] = {
     7200,
     7300
 };
-
-const skyPalette<6> skyCycle[4];
 
 #endif
