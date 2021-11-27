@@ -17,6 +17,7 @@
 int mode = 0;
 bool inSleepMode = false;
 bool inManualTransition = false;
+bool inSettings = false;
 
 int currentCycle = 0;
 int manualTargetCycle = 0;

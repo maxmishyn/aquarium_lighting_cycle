@@ -1,4 +1,6 @@
 #define OLED_SPI_SPEED 4000000ul
+#define EB_HOLD 2000
+
 //#define DEBUG_OUTPUT
 
 #include <GyverOLED.h>
@@ -7,6 +9,7 @@
 #include <TimerMs.h>
 #include <math.h>
 #include <microLED.h>
+#include <EEPROMex.h>
 
 #include "globals.h"
 #include "uiElements.h"
@@ -24,9 +27,11 @@ GyverNTC therm(2, 10000, 3950, 25, 8440);
 TimerMs thermTimer(2000, 1, 0);
 TimerMs sleepTimer(60000, 0, 1);
 TimerMs normalCycleTimer(6000, 1, 0);//6000
+TimerMs inSettingsTimer(4000, 0, 0);
+
 //TimerMs fastCycleTimer(MANUAL_TRANSITION_STEPS_PER_SECOND, 0, 0);
 
-microLED<0, 8, MLED_NO_CLOCK, LED_WS2812, ORDER_GRB, CLI_AVER> strip;
+microLED<0, 8, MLED_NO_CLOCK, LED_WS2812, ORDER_GRB, CLI_OFF> strip;
 
 void setup()
 {
@@ -35,20 +40,21 @@ void setup()
   oled.init();
   //  Wire.setClock(400000L);
 
+  read_eeprom();
+
+  sleepTimer.start();
+
+  pinMode(WHITE_LIGHT_PIN, OUTPUT);
+
   oled.clear();
-  delay(2);
   for (int i = 0; i < 4; i++)
   {
     oled.drawBitmap(ICON_SIZE * i, TOP_OFFSET, icon_table[i], ICON_SIZE, ICON_SIZE, BITMAP_INVERT);
   }
   overlayRect(1);
   oled.update();
-  delay(2);
   writeTemp();
-  sleepTimer.start();
 
-  pinMode(WHITE_LIGHT_PIN, OUTPUT);
-  
 #ifdef DEBUG_OUTPUT
   Serial.begin(9600);
 #endif
@@ -58,28 +64,67 @@ void loop()
 {
   nextBtn.tick();
   prevBtn.tick();
-  if (nextBtn.press())
+
+  if (nextBtn.hold()||prevBtn.hold())
   {
-    if (!inSleepMode)
-    {
-      updateMode(mode + 1);
-      startManualTransition(1);
-    }
-    sleepTimer.start();
-  }
-  if (prevBtn.press())
-  {
-    if (!inSleepMode)
-    {
-      updateMode(mode - 1);
-      startManualTransition(-1);
-    }
-    sleepTimer.start();
+    inSettings = true;
+    inSettingsTimer.start();
   }
 
-  if (thermTimer.tick())
+  if (inSettings) 
   {
-    writeTemp();
+    if (nextBtn.click())
+    {
+      if (colotTemperatureSetting < 9) {}
+        colotTemperatureSetting++;
+      sleepTimer.start();
+      inSettingsTimer.start();
+      write_eeprom();
+    }
+
+    if (prevBtn.click())
+    {
+      if (colotTemperatureSetting > 0)
+        colotTemperatureSetting--;
+      sleepTimer.start();
+      inSettingsTimer.start();
+      write_eeprom();
+    }
+
+    drawSettings();
+
+    if (inSettingsTimer.elapsed())
+    {
+      oled.clear(0, TOP_OFFSET * 2 + ICON_SIZE, 127, TOP_OFFSET * 2 + ICON_SIZE + 8);
+      oled.update(0, TOP_OFFSET * 2 + ICON_SIZE, 127, TOP_OFFSET * 2 + ICON_SIZE + 8);
+      inSettings = false;
+    }
+  }
+  else 
+  {
+    if (nextBtn.click())
+    {
+      if (!inSleepMode)
+      {
+        updateMode(mode + 1);
+        startManualTransition(1);
+      }
+      sleepTimer.start();
+    }
+
+    if (prevBtn.click())
+    {
+      if (!inSleepMode)
+      {
+        updateMode(mode - 1);
+        startManualTransition(-1);
+      }
+      sleepTimer.start();
+    }
+    if (thermTimer.tick())
+    {
+      writeTemp();
+    }
   }
 
   if (normalCycleTimer.tick())
@@ -147,12 +192,12 @@ void overlayRect(int fill)
 
 void writeTemp()
 {
-  oled.clear(0, TOP_OFFSET * 2 + ICON_SIZE, 8 * 12, TOP_OFFSET * 2 + ICON_SIZE + 8);
+  oled.clear(0, TOP_OFFSET * 2 + ICON_SIZE, 127, TOP_OFFSET * 2 + ICON_SIZE + 8);
   oled.setCursorXY(0, TOP_OFFSET * 2 + ICON_SIZE);
   oled.print("Темп: ");
   oled.print(therm.getTempAverage(), 1);
   drawIcon(0);
-  oled.update(0, TOP_OFFSET * 2 + ICON_SIZE, 8 * 12, TOP_OFFSET * 2 + ICON_SIZE + 8);
+  oled.update(0, TOP_OFFSET * 2 + ICON_SIZE, 127, TOP_OFFSET * 2 + ICON_SIZE + 8);
 }
 
 void drawIcon(byte index)
@@ -229,7 +274,10 @@ void lightRendering()
   mData outColor = { color.r, color.g, color.b };
   analogWrite(WHITE_LIGHT_PIN, color.a);
   strip.begin();
-  strip.send(outColor);
+  for (int i=0;i<6;i++)
+  {
+    strip.send(outColor);
+  }
   strip.end();
 }
 
@@ -250,8 +298,7 @@ sData getColor(int _step)
       skyCycle[cMode]
           .get(_step - modeCycles[cMode], cyclesPerMode),
       TypicalSMD5050,
-      UncorrectedTemperature
-      );
+      colorTemps[colotTemperatureSetting].value);
 }
 
 void fadeIn()
@@ -265,4 +312,37 @@ int getModeByCycle(int cycle)
     if (cycle>modeCycles[i]) 
       return i;
   }
+}
+
+void write_eeprom()
+{
+  EEPROM.updateByte(10, colotTemperatureSetting);
+  EEPROM.updateByte(11, 253);
+}
+
+void read_eeprom()
+{
+  if (EEPROM.read(11) != 253)
+  {
+    colotTemperatureSetting = 0;
+  }
+  else 
+  {
+    colotTemperatureSetting = EEPROM.read(10);
+    if (colotTemperatureSetting < 0)
+      colotTemperatureSetting = 0;
+    if (colotTemperatureSetting > 9)
+      colotTemperatureSetting = 9;
+  }
+}
+
+void drawSettings()
+{
+  oled.clear(0, TOP_OFFSET * 2 + ICON_SIZE, 127, TOP_OFFSET * 2 + ICON_SIZE + 8);
+  oled.setCursorXY(0, TOP_OFFSET * 2 + ICON_SIZE);
+  oled.print("Цвет. темп: ");
+  oled.print(colorTemps[colotTemperatureSetting].name);
+  if (colotTemperatureSetting>0) 
+    drawIcon(1);
+  oled.update(0, TOP_OFFSET * 2 + ICON_SIZE, 127, TOP_OFFSET * 2 + ICON_SIZE + 8);
 }
