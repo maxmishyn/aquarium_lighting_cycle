@@ -1,3 +1,16 @@
+#ifndef __have__ueElements_h__
+#define __have__ueElements_h__
+
+#include "colorCorrection.h"
+
+void drawIcon(byte index);
+void writeTemp();
+void drawIcon(byte index);
+void drawColorTemperatureSettings();
+void drawBrightnessSettings();
+void overlayRect(int fill);
+void updateMode(int newMode);
+
 const uint8_t monlight_32x32[] PROGMEM = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x1F, 0xEF, 0xF7, 0xFB, 0x1D, 0xED, 0xF5, 0xF9, 0xF9, 0xF9, 0xFB, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
@@ -29,3 +42,97 @@ const static uint8_t icons[][7] PROGMEM = {
 };
 
 const uint8_t *icon_table[(MAX_MODE+1)] = {sunrise_32x32, daylight_32x32, sunset_32x32, monlight_32x32};
+
+GyverOLED<SSD1306_128x64, OLED_BUFFER, OLED_SPI, 2, 3, 4> oled;
+//GyverOLED<SSD1306_128x64, OLED_NO_BUFFER, OLED_SPI, 2, 3, 4> oled;
+
+void initUi()
+{
+	oled.clear();
+	for (int i = 0; i < 4; i++)
+	{
+		oled.drawBitmap(ICON_SIZE * i, TOP_OFFSET, icon_table[i], ICON_SIZE, ICON_SIZE, BITMAP_INVERT);
+	}
+	overlayRect(mode);
+	oled.update();
+}
+
+void initScreen()
+{
+	oled.init();
+	//  Wire.setClock(400000L);
+	oled.clear();
+	initUi();
+}
+
+void writeTemp()
+{
+	oled.clear(0, TOP_OFFSET * 2 + ICON_SIZE, 127, TOP_OFFSET * 2 + ICON_SIZE + 8);
+	oled.setCursorXY(0, TOP_OFFSET * 2 + ICON_SIZE);
+	oled.print("Темп: ");
+	oled.print(therm.getTempAverage(), 1);
+	drawIcon(0);
+	oled.update(0, TOP_OFFSET * 2 + ICON_SIZE, 127, TOP_OFFSET * 2 + ICON_SIZE + 8);
+}
+
+void drawIcon(byte index)
+{
+	size_t s = sizeof icons[index];
+	for (unsigned int i = 0; i < s; i++)
+	{
+		oled.drawByte(pgm_read_byte(&(icons[index][i])));
+	}
+}
+
+void drawColorTemperatureSettings()
+{
+	oled.clear(0, TOP_OFFSET * 2 + ICON_SIZE, 127, TOP_OFFSET * 2 + ICON_SIZE + 8);
+	oled.setCursorXY(0, TOP_OFFSET * 2 + ICON_SIZE);
+	oled.print("Цвет. темп: ");
+	oled.print(colorTemps[colorTemperatureSetting].name);
+	if (colorTemperatureSetting > 0)
+		drawIcon(1);
+	oled.update(0, TOP_OFFSET * 2 + ICON_SIZE, 127, TOP_OFFSET * 2 + ICON_SIZE + 8);
+}
+
+void drawBrightnessSettings()
+{
+	oled.clear(0, TOP_OFFSET * 2 + ICON_SIZE, 127, TOP_OFFSET * 2 + ICON_SIZE + 8);
+	oled.setCursorXY(0, TOP_OFFSET * 2 + ICON_SIZE);
+	oled.print("Яркость цвета: ");
+	oled.print(colorBrightnessSetting);
+	oled.print("%");
+	oled.update(0, TOP_OFFSET * 2 + ICON_SIZE, 127, TOP_OFFSET * 2 + ICON_SIZE + 8);
+}
+
+void overlayRect(int fill)
+{
+	oled.fastLineH(TOP_OFFSET, ICON_SIZE * mode, ICON_SIZE * (mode + 1) - 1, fill);
+	oled.fastLineH((ICON_SIZE + TOP_OFFSET) - 1, ICON_SIZE * mode, ICON_SIZE * (mode + 1) - 1, fill);
+	oled.fastLineV(ICON_SIZE * mode, TOP_OFFSET, (ICON_SIZE + TOP_OFFSET) - 1, fill);
+	oled.fastLineV(ICON_SIZE * (mode + 1) - 1, TOP_OFFSET, (ICON_SIZE + TOP_OFFSET) - 1, fill);
+}
+
+void updateMode(int newMode)
+{
+	oled.drawBitmap(ICON_SIZE * mode, TOP_OFFSET, icon_table[mode], ICON_SIZE, ICON_SIZE, BITMAP_INVERT);
+	overlayRect(0);
+	oled.update(ICON_SIZE * mode, TOP_OFFSET, ICON_SIZE * (mode + 1), (ICON_SIZE + TOP_OFFSET));
+	if (newMode > MAX_MODE)
+	{
+		mode = 0;
+	}
+	else if (newMode < 0)
+	{
+		mode = MAX_MODE;
+	}
+	else
+	{
+		mode = newMode;
+	}
+	overlayRect(1);
+	oled.drawBitmap(ICON_SIZE * mode, TOP_OFFSET, icon_table[mode], ICON_SIZE, ICON_SIZE, BITMAP_INVERT, BUF_ADD);
+	oled.update(ICON_SIZE * mode, TOP_OFFSET, ICON_SIZE * (mode + 1), (ICON_SIZE + TOP_OFFSET));
+}
+
+#endif

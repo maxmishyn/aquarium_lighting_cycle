@@ -63,6 +63,36 @@ colorTemperature colorTemps[10] = {
     {ClearBlueSky, "20000"}
   };
 
-uint8_t colotTemperatureSetting = 0;
+uint8_t colorTemperatureSetting = 0;
+uint8_t colorBrightnessSetting = 127;
+
+void write_eeprom()
+{
+  // EEPROM.updateByte(10, colorTemperatureSetting);
+  // EEPROM.updateByte(12, colorBrightnessSetting);
+  // EEPROM.updateByte(11, 253);
+}
+
+void read_eeprom()
+{
+  if (EEPROM.read(11) != 253)
+  {
+    colorTemperatureSetting = 0;
+    colorBrightnessSetting = 127;
+  }
+  else
+  {
+    colorTemperatureSetting = EEPROM.read(10);
+    if (colorTemperatureSetting < 0)
+      colorTemperatureSetting = 0;
+    if (colorTemperatureSetting > 9)
+      colorTemperatureSetting = 9;
+    colorBrightnessSetting = EEPROM.read(12);
+    if (colorBrightnessSetting < 0)
+      colorBrightnessSetting = 0;
+    if (colorBrightnessSetting > 255)
+      colorTemperatureSetting = 255;
+  }
+}
 
 #endif
